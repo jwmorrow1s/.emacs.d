@@ -14,12 +14,18 @@
 (tool-bar-mode -1)    ; disable the tool bar
 (tooltip-mode -1)     ; disable tooltips
 (menu-bar-mode -1)    ; disable the menu bar
-(global-linum-mode 1) ; enable line numbers globally
 
-; figure out how to get git branch
-(setq-default mode-line-format '("%f" "  " (car (vc-git-branches)) "  " (vc-git-state buffer-file-truename)))
+; modeline: figure out [column:row]
+(setq-default mode-line-format
+    (list "%f"
+	; the order gets screwed up somehow. Find way to force order. TODO
+	(list '(:eval (concat "[" (prin1-to-string (line-number-at-pos)) ":"  (prin1-to-string (current-column)) "]")))
+	(list '(:eval (let ((current-branch (car (vc-git-branches))))
+			(when current-branch (concat " | " current-branch)))))
+	(list '(:eval (let ((file-status (prin1-to-string (vc-state buffer-file-truename))))
+			(when file-status (concat " | " file-status)))))))
 
-(add-hook 'dired-mode-hook (lambda () (linum-mode 0)))  ; disable line numbers in dired
+(run-with-timer 0 0.2 #'(lambda () (force-mode-line-update t)))
 
 (setq
     x-select-enable-clipboard t
@@ -37,7 +43,8 @@
 	(evil-yank beg end)
 	(kill-ring-save beg end)))
 
-(global-set-key(kbd "C-M-j") 'counsel-switch-buffer)
+(global-set-key (kbd "C-M-j") 'counsel-switch-buffer)
+(global-set-key (kbd "C-M-o") 'previous-buffer)
 
 (with-eval-after-load 'dired (progn
   (define-key dired-mode-map (kbd "M-d") 'dired-create-directory)
@@ -46,7 +53,6 @@
 (with-eval-after-load 'evil (progn
     ; normal mode
     (define-key evil-normal-state-map (kbd "SPC f s") 'counsel-rg)
-    (define-key evil-normal-state-map (kbd "C-M-o") 'previous-buffer)
     ; visual mode
     (define-key evil-visual-state-map (kbd "y") 'custom-yank)))
 
