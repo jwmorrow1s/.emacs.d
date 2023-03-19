@@ -10,15 +10,22 @@
 (setq package-archives '(("melpa" . "https://melpa.org/packages/")
         ("elpa" . "https://elpa.gnu.org/packages/")))
 
+(global-linum-mode)
+
+(defun todo () (print "unimplemented!"))
+
+(defun E ()
+  (interactive)
+  (let ((cwd (file-name-directory default-directory)))
+    (dired cwd)))
+
 (scroll-bar-mode -1)  ; disable the scroll bar
 (tool-bar-mode -1)    ; disable the tool bar
 (tooltip-mode -1)     ; disable tooltips
 (menu-bar-mode -1)    ; disable the menu bar
 
-; modeline: figure out [column:row]
 (setq-default mode-line-format
     (list "%f"
-	; the order gets screwed up somehow. Find way to force order. TODO
 	(list '(:eval (concat "[" (prin1-to-string (line-number-at-pos)) ":"  (prin1-to-string (current-column)) "]")))
 	(list '(:eval (let ((current-branch (car (vc-git-branches))))
 			(when current-branch (concat " | " current-branch)))))
@@ -48,13 +55,17 @@
 
 (with-eval-after-load 'dired (progn
   (define-key dired-mode-map (kbd "M-d") 'dired-create-directory)
-  (define-key dired-mode-map (kbd "C-M-]") 'dired-create-empty-file)))
+  (define-key dired-mode-map (kbd "%") 'dired-create-empty-file)))
 
+(setq evil-undo-system 'undo-redo)
 (with-eval-after-load 'evil (progn
+    ; vars
     ; normal mode
     (define-key evil-normal-state-map (kbd "SPC f s") 'counsel-rg)
     ; visual mode
-    (define-key evil-visual-state-map (kbd "y") 'custom-yank)))
+    (define-key evil-visual-state-map (kbd "y") 'custom-yank)
+    ; call elisp buffer
+    (define-key evil-normal-state-map (kbd "SPC e") 'eval-expression)))
 
 (with-eval-after-load 'sly (progn
     (define-key sly-mode-map (kbd "C-q C-q") 'sly-quit-lisp)
@@ -76,10 +87,6 @@
   (package-refresh-contents)
   (package-install 'use-package))
 (eval-when-compile (require 'use-package))
-
-;;; UNDO
-;; Vim style undo not needed for emacs 28
-;(use-package undo-fu)
 
 ;;; Vim Bindings
 (use-package evil
