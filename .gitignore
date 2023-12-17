@@ -1,0 +1,12 @@
+elpa
+eln-cache
+autosave*
+dist
+tree-sitter*
+tramp
+projects
+bookmarks
+recentf
+custom-vars.el
+.lsp*
+.org*

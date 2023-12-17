@@ -1,15 +1,14 @@
-;NOTES
-; if using terminal emacs in tmux, you probably will need to add
-; `set -sg escape-time 0` into "$HOME/.tmux.conf"
-; then in tmux C-b : source-file ~/.tmux.conf
-; supposedly this can cause problems with certain fns inside of tmux (especially when ssh'ing, but I haven't
-;;;;; noticed any issues personally
-
-;;; PACKAGE LIST
+(delete-selection-mode 1)
 (setq package-archives '(("melpa" . "https://melpa.org/packages/")
         ("elpa" . "https://elpa.gnu.org/packages/")))
-
+(setq-default indent-tabs-mode nil)
 ;; <private fns>
+(setq custom-safe-themes t)
+(require 'treesit)
+(setq treesit-font-lock-level 4)
+
+(setq major-mode-remap-alist
+			'((js-mode . js-ts-mode)))
 
 (defun jeff--q ()
   (interactive)
@@ -23,10 +22,48 @@
     (save-buffer)
     (jeff--q)))
 
+(defun jeff--regex-find-capture (regex string capture-index)
+    (progn
+    (let ((str string))
+        (string-match regex str)
+        (match-string capture-index str))))
+
 (defun jeff--init-c-mode ()
     (let ((the-map (make-sparse-keymap)))
       (eglot-ensure)
       (use-local-map the-map)))
+
+(defun jeff--init-zig-mode ()
+    (let ((the-map (make-sparse-keymap)))
+      (eglot-ensure)
+      (use-local-map the-map)
+			(keymap-local-set "C-c b" #'zig-compile)
+			(keymap-local-set "C-c f" #'zig-format-buffer)
+			(keymap-local-set "C-c r" #'zig-run)
+			(keymap-local-set "C-c t" #'zig-test-buffer)
+			(keymap-local-unset "K")
+			(keymap-local-set "K" #'eldoc)))
+
+(defun jeff--init-js-mode ()
+    (let ((the-map (make-sparse-keymap)))
+      (eglot-ensure)
+			(setq js-indent-level 2)
+      (use-local-map the-map)
+			(keymap-local-set "C-c f" #'eglot-format-buffer)
+			(keymap-local-set "C-c e" #'eglot-code-action-extract)
+			(keymap-local-set "C-c i" #'eglot-code-action-inline)
+			(keymap-local-set "C-c a" #'eglot-code-actions)
+			(keymap-local-set "C-c r" #'eglot-rename)
+			(keymap-local-set "C-c o i" #'eglot-code-action-organize-imports)
+			(keymap-local-unset "K")
+			(keymap-local-set "K" #'eldoc)))
+
+(defun jeff--init-nix-mode ()
+    (let ((the-map (make-sparse-keymap)))
+      (eglot-ensure)
+      (use-local-map the-map)
+			(keymap-local-unset "K")
+			(keymap-local-set "K" #'eldoc)))
 
 ;; </private fns>
 
@@ -74,34 +111,19 @@
 (run-with-timer 0 0.2 #'(lambda () (force-mode-line-update t)))
 ;; </mode line>
 
-;; <enable clipboard copyhing>
-;; x only? maybe only linux
 (setq
-    x-select-enable-clipboard t
-    x-select-enable-primary t
-    select-enable-clipboard t
-    select-enable-primary t
 		inhibit-startup-screen t
 		inhibit-startup-message t)
-;; </enable clipboard copyhing>
-
-;;; keymaps
-;;; fn to yank to clipboard as well
-;;; relies on xclip being installed (at least on linux) see below use-package xclip
-(defun custom-yank (beg end)
-  "fn to yank to clipboard as well"
-  (interactive "r") ; r means -- mark and point -- smallest first
-    (progn
-	(evil-yank beg end)
-	(kill-ring-save beg end)))
 
 (with-eval-after-load 'dired (progn
-  (define-key dired-mode-map (kbd "M-d") 'dired-create-directory)
-  (define-key dired-mode-map (kbd "M-%") 'dired-create-empty-file)))
+  (define-key dired-mode-map (kbd "C-c d") 'dired-create-directory)
+  (define-key dired-mode-map (kbd "C-c %") 'dired-create-empty-file)))
 
 (with-eval-after-load 'vterm
 	(keymap-global-set "C-c s" #'vterm))
 
+(with-eval-after-load 'flycheck
+	(global-flycheck-mode))
 
 (with-eval-after-load 'evil
     (with-eval-after-load 'company
@@ -117,6 +139,7 @@
     (evil-ex-define-cmd "wq" 'jeff--wq)
     ; insert mode -- fix spc
     (define-key evil-insert-state-map (kbd "SPC") nil)
+    ; (define-key evil-insert-state-map (kbd "C-v") nil)
 
     ; insert mode -- fix tabs
     (define-key evil-insert-state-map (kbd "TAB") nil)
@@ -127,8 +150,6 @@
     ; normal mode
     (define-key evil-motion-state-map (kbd "C-z") nil t)
     (define-key evil-normal-state-map (kbd "SPC f s") 'counsel-rg)
-    ; visual mode
-    (define-key evil-visual-state-map (kbd "y") 'custom-yank)
     ; call elisp buffer
     (define-key evil-normal-state-map (kbd "SPC e") 'eval-expression)
     ; rebind shift-k to give symbol info under cursor in minibuffer
@@ -160,8 +181,19 @@
     (define-key evil-normal-state-map (kbd "C-M-b") 'counsel-switch-buffer)
     (define-key evil-normal-state-map (kbd "SPC f f") 'counsel-file-jump)))
 
+(with-eval-after-load 'eglot
+	(add-to-list 'eglot-server-programs '(nix-mode . ("nil")))
+	(add-to-list 'eglot-server-programs `(js-mode . ("typescript-language-server"
+																										"--stdio"
+																									 ))))
+
 ; hooks
 (add-hook 'c-mode-hook #'jeff--init-c-mode)
+(add-hook 'zig-mode-hook #'jeff--init-zig-mode)
+(add-hook 'ts-mode-hook #'jeff--init-js-mode)
+(add-hook 'js-mode-hook #'jeff--init-js-mode)
+(add-hook 'nix-mode-hook #'jeff--init-nix-mode)
+(add-hook 'after-init-hook 'global-company-mode)
 ; /hooks
 
 ;;; BOOTSTRAP USE-PACKAGE
@@ -219,9 +251,17 @@
 (use-package ivy
   :config (ivy-mode))
 
+;; flycheck
+(use-package flycheck)
+
 ;; Counsel
 (use-package counsel
   :config (counsel-mode))
+
+;; Company
+(use-package company
+	:config
+	(setq company-idle-delay 0.1))
 
 ;; brings in xclip to allow copying between xwindows. necessary for yanking to clipboard and pasting across windows
 (use-package xclip
@@ -236,5 +276,6 @@
 
 (setq make-backup-files nil)
 
-(load-theme 'modus-vivendi-deuteranopia)
 (setq-default tab-width 2)
+
+(load-theme 'modus-vivendi t)
