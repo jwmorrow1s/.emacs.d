@@ -63,7 +63,7 @@
     (define-key evil-normal-state-map key cmd)
     (define-key evil-motion-state-map key cmd)
     (define-key evil-emacs-state-map key cmd)
-    (define-key vc-dir-git-mode-map key cmd)
+    (with-eval-after-load 'vc-git (define-key vc-dir-git-mode-map key cmd))
     (define-key Buffer-menu-mode-map key cmd)))
 
 (custom-evil-global-rebind (kbd "C-u") 'evil-scroll-up)
