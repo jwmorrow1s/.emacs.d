@@ -48,29 +48,54 @@
 (define-prefix-command 'custom-leader-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;                                             
-      ;Evil Keybinds;                                                             
+      ;Key Rebinds;                                                               
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;                                             
 ;;;;;;;;;;;;;;;                                                                   
 ;Global Unbind;                                                                   
 ;;;;;;;;;;;;;;;                                                                   
 (keymap-global-unset "C-u")
+
 ;;;;;;;;;;;;;;;                                                                   
 ;Global Rebind;                                                                   
 ;;;;;;;;;;;;;;;                                                                   
-(evil-define-key 'normal 'global (kbd "C-u") 'evil-scroll-up)
+(defun custom-evil-global-rebind (key cmd)
+  (progn
+    (define-key evil-normal-state-map key cmd)
+    (define-key evil-motion-state-map key cmd)
+    (define-key evil-emacs-state-map key cmd)
+    (define-key vc-dir-git-mode-map key cmd)
+    (define-key Buffer-menu-mode-map key cmd)))
+
+(custom-evil-global-rebind (kbd "C-u") 'evil-scroll-up)
 
 (defun custom-re-eval-config ()
   (interactive)
   (load-file user-init-file))
 
+;;;;;;;;;;;;;;;                                                                   
+;Dired  Rebind;                                                                   
+;;;;;;;;;;;;;;;                                                                   
+(with-eval-after-load 'dired
+  (dolist (key '("b" "n" "N" "^" "$"))
+	  (define-key dired-mode-map (kbd key) nil)))
+
 ;;;;;;;;;;;;;;;;;
 ;Leader Bindings;
 ;;;;;;;;;;;;;;;;;
 (defun custom-pretty-print ()
-  (interactive) (when (derived-mode-p 'emacs-lisp-mode) (pp-buffer)))
+  (interactive)
+  (cond ((derived-mode-p 'scheme-mode) (pp-buffer))
+        ((derived-mode-p 'emacs-lisp-mode) (pp-buffer))
+	(t (princ "pretty printing not supported"))))
 (defun custom-open-emacs-config ()
   (interactive)
   (find-file user-init-file))
+(defun custom-text-increase ()
+  (interactive)
+  (text-scale-increase 1))
+(defun custom-text-decrease ()
+  (interactive)
+  (text-scale-decrease 1))
 (defun custom-language-specific-behavior-start ()
   (interactive)
   (cond ((derived-mode-p 'scheme-mode) (progn
@@ -80,20 +105,48 @@
 					 (geiser 'guile)))
 	(t (princ "language specific behavior not defined"))))
 
-(define-key evil-normal-state-map custom-leader custom-leader-map)
-(define-key custom-leader-map (kbd "f f") 'find-file)
-(define-key custom-leader-map (kbd "f c") 'custom-open-emacs-config)
-(define-key custom-leader-map (kbd "f s") 'rgrep)
-(define-key custom-leader-map (kbd "h f") 'describe-function)
-(define-key custom-leader-map (kbd "h a") 'apropos)
-(define-key custom-leader-map (kbd "h v") 'describe-variable)
-(define-key custom-leader-map (kbd "h k") 'describe-key)
-(define-key custom-leader-map (kbd ". .") 'custom-re-eval-config)
-(define-key custom-leader-map (kbd ". e") 'eval-expression)
-(define-key custom-leader-map (kbd "l l")
-	    'custom-language-specific-behavior-start)
-(define-key custom-leader-map (kbd "p r") 'package-refresh-contents)
-(define-key custom-leader-map (kbd "p p") 'custom-pretty-print)
+(custom-evil-global-rebind custom-leader custom-leader-map)
+(dolist (key->fn
+	 '(("f f" . find-file)
+	   ("f c" . custom-open-emacs-config)
+	   ("f s" . rgrep)
+	   ("h f" . describe-function)
+	   ("h a" . apropos)
+	   ("h v" . describe-variable)
+	   ("h k" . describe-key)
+	   ("h b" . describe-bindings)
+	   (". ." . custom-re-eval-config)
+	   (". e" . eval-expression)
+	   ("p r" . package-refresh-contents)
+	   ("l l" . custom-language-specific-behavior-start)
+	   ("p p" . custom-pretty-print)
+	   ("t u" . custom-text-increase)
+	   ("t d" . custom-text-decrease)
+	   ("b l" . list-buffers)
+	   ("b b" . switch-to-buffer)
+	   ("b p" . switch-to-prev-buffer)
+	   ("b n" . switch-to-next-buffer)
+	   ("t t" . tab-bar-new-tab)
+	   ("t x" . tab-bar-mode)
+           ("c c" . comment-line)
+           ("v d" . vc-diff)
+           ("v D" . vc-root-diff)
+           ("v i" . vc-dir-root)))
+  (let ((key (car key->fn))
+	(fn (cdr key->fn)))
+    (define-key custom-leader-map (kbd key) fn)))
+;;;;;;;;;;;;;;;;;;;;;                                                             
+;Other bindings;;;;;;                                                             
+;;;;;;;;;;;;;;;;;;;;;                                                             
+(defun custom-evil-search-prompt-yank ()
+  (when (boundp 'minibuffer-local-map)
+    (define-key (current-local-map) (kbd "C-y") 'yank)))
+
+(add-hook 'minibuffer-setup-hook 'custom-evil-search-prompt-yank)
+(define-key minibuffer-local-map (kbd "C-v") 'yank)
+(define-key minibuffer-local-ns-map (kbd "C-v") 'yank)
+(with-eval-after-load 'evil
+  (define-key evil-ex-map (kbd "C-v") 'yank))
 
 ;;;;;;;;;;;;;;;;;;;;;                                                             
 ;ESC kills minibuf;;;                                                             
@@ -107,7 +160,6 @@
 (with-eval-after-load 'evil
   (define-key evil-insert-state-map [escape]
 	      'custom-minibuffer-keyboard-quit)
-					; to quit completions from company
   (define-key evil-normal-state-map [escape] 'keyboard-quit)
   (define-key evil-visual-state-map [escape] 'keyboard-quit)
   (define-key minibuffer-local-map [escape] 'abort-recursive-edit)
@@ -128,6 +180,11 @@
 
 (evil-ex-define-cmd "E" 'custom-dired-this-dir)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                         ;Dired;                                             
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(with-eval-after-load 'dired
+  (define-key dired-mode-map (kbd "%") 'dired-create-empty-file))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                          ;Line Numbers;                                      
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -214,7 +271,7 @@
   (define-key company-active-map (kbd "TAB") 'company-select-next)
   (define-key company-active-map (kbd "<tab>") 'company-select-next)
   (define-key company-active-map (kbd "<backtab>")
-	      'company-select-next)
+	      'company-select-previous)
 
   (define-key company-active-map [escape] #'company-abort)
   (define-key company-active-map (kbd "ESC") #'company-abort)
@@ -239,7 +296,8 @@
 (with-eval-after-load 'geiser
   (define-key custom-leader-map (kbd "e b") 'geiser-eval-buffer)
   (define-key custom-leader-map (kbd "e e") 'geiser-eval-definition)
-  (define-key custom-leader-map (kbd "g d") 'geiser-edit-symbol-at-point)
+  (define-key custom-leader-map (kbd "g d")
+	      'geiser-edit-symbol-at-point)
   (define-key custom-leader-map (kbd "c l") 'geiser-insert-lambda)
   (define-key custom-leader-map (kbd "k") 'geiser-doc-symbol-at-point)
   (define-key custom-leader-map (kbd "d d") 'geiser-autodoc-mode))
