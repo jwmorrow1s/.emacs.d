@@ -128,7 +128,7 @@
 	   ("b n" . switch-to-next-buffer)
 	   ("t t" . tab-bar-new-tab)
 	   ("t x" . tab-bar-mode)
-           ("c c" . comment-line)
+           ("c c" . comment-region)
            ("v d" . vc-diff)
            ("v D" . vc-root-diff)
            ("v i" . vc-dir-root)))
